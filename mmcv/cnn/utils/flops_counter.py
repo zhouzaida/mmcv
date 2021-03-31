@@ -25,6 +25,7 @@
 
 import sys
 from functools import partial
+from typing import Optional, Tuple
 
 import numpy as np
 import torch
@@ -33,13 +34,77 @@ import torch.nn as nn
 import mmcv
 
 
-def get_model_complexity_info(model,
-                              input_shape,
-                              print_per_layer_stat=True,
-                              as_strings=True,
-                              input_constructor=None,
-                              flush=False,
-                              ost=sys.stdout):
+def get_model_complexity_info(model: nn.Module,
+                              input_shape: tuple,
+                              print_per_layer_stat: bool = True,
+                              as_strings: bool = True,
+                              input_constructor: Optional[callable] = None,
+                              flush: bool = False,
+                              ost=sys.stdout,
+                              counter_type: str = 'hook'):
+    """Get complexity information of a model.
+
+    Args:
+        model (nn.Module): The model for complexity calculation.
+        input_shape (tuple): Input shape used for calculation.
+        print_per_layer_stat (bool): Whether to print complexity information
+            for each layer in a model. Default: True.
+        as_strings (bool): Output FLOPs and params counts in a string form.
+            Default: True.
+        input_constructor (None | callable): If specified, it takes a callable
+            method that generates input. otherwise, it will generate a random
+            tensor with input shape to calculate FLOPs. Default: None.
+        flush (bool): same as that in :func:`print`. Default: False.
+        ost (stream): same as ``file`` param in :func:`print`.
+            Default: sys.stdout.
+        counter_type: (str): TODO
+
+    Returns:
+        tuple[float | str]: If ``as_strings`` is set to True, it will return
+            FLOPs and parameter counts in a string format. otherwise, it will
+            return those in a float number format.TODO
+
+    Example:
+        >>> from torchvision.models import resnet18
+        >>> from mmcv.cnn.utils.flops_counter import get_model_complexity_info
+        >>> flop, param = get_model_complexity_info(model, (3, 64, 64),
+        ...                                         counter_type='jit')
+        >>> flop, param = get_model_complexity_info(model, (3, 64, 64),
+        ...                                         counter_type='hook')
+    """
+    if counter_type == 'hook':
+        return model_count_by_hook(model, input_shape, print_per_layer_stat,
+                                   as_strings, input_constructor, flush, ost)
+    elif counter_type == 'jit':
+        return model_count_by_jit(model, input_shape)
+    else:
+        raise ValueError('"counter type" should be "hook" or "jit", but got'
+                         f'{counter_type}')
+
+
+def model_count_by_jit(model: nn.Module,
+                       input_shape: tuple) -> Tuple[dict, dict]:
+    try:
+        from fvcore.nn.flop_count import FlopCountAnalysis
+        from fvcore.nn.parameter_count import parameter_count
+    except ImportError:
+        raise ImportError('Please run "pip install -U fvcore" to install'
+                          'fvcore.')
+    input_shape = (1, *input_shape)  # add bath dimension
+    inputs = (torch.randn(input_shape), )
+    flops_counter = FlopCountAnalysis(model, inputs)
+    flops_count = flops_counter.by_module_and_operator()
+    params_count = parameter_count(model)
+    return flops_count, params_count
+
+
+def model_count_by_hook(model: nn.Module,
+                        input_shape: tuple,
+                        print_per_layer_stat: bool = True,
+                        as_strings: bool = True,
+                        input_constructor: Optional[callable] = None,
+                        flush: bool = False,
+                        ost=sys.stdout):
     """Get complexity information of a model.
 
     This method can calculate FLOPs and parameter counts of a model with
@@ -115,7 +180,9 @@ def get_model_complexity_info(model,
     return flops_count, params_count
 
 
-def flops_to_string(flops, units='GFLOPs', precision=2):
+def flops_to_string(flops: float,
+                    units: str = 'GFLOPs',
+                    precision: int = 2) -> str:
     """Convert FLOPs number into a string.
 
     Note that Here we take a multiply-add counts as one FLOP.
@@ -158,7 +225,9 @@ def flops_to_string(flops, units='GFLOPs', precision=2):
             return str(flops) + ' FLOPs'
 
 
-def params_to_string(num_params, units=None, precision=2):
+def params_to_string(num_params: float,
+                     units: Optional[str] = None,
+                     precision: int = 2) -> str:
     """Convert parameter number into a string.
 
     Args:
@@ -195,13 +264,13 @@ def params_to_string(num_params, units=None, precision=2):
             return str(num_params)
 
 
-def print_model_with_flops(model,
-                           total_flops,
-                           total_params,
-                           units='GFLOPs',
-                           precision=3,
+def print_model_with_flops(model: nn.Module,
+                           total_flops: float,
+                           total_params: float,
+                           units: str = 'GFLOPs',
+                           precision: int = 3,
                            ost=sys.stdout,
-                           flush=False):
+                           flush: bool = False) -> None:
     """Print a model with FLOPs for each layer.
 
     Args:
