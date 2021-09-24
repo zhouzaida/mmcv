@@ -219,4 +219,4 @@ pip list
 如果你的 PyTorch 版本是 1.6.0，你可能会遇到一些这个 [issue](https://github.com/pytorch/pytorch/issues/42467) 提到的错误，则可以参考这个 [pull request](https://github.com/pytorch/pytorch/pull/43380/files) 修改 本地环境的 PyTorch 源代码
 ```
 
-如果编译安装 mmcv 的过程中遇到了问题，你也许可以在 [Frequently Asked Question](../faq.html) 找到解决方法
+如果编译安装 mmcv 的过程中遇到了问题，你也许可以在 [常见问题](https://mmcv.readthedocs.io/zh_CN/latest/faq.html) 找到解决方法

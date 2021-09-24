@@ -231,4 +231,4 @@ Check your the compute capability of your GPU from [here](https://developer.nvid
 If you are compiling against PyTorch 1.6.0, you might meet some errors from PyTorch as described in [this issue](https://github.com/pytorch/pytorch/issues/42467). Follow [this pull request](https://github.com/pytorch/pytorch/pull/43380/files) to modify the source code in your local PyTorch installation.
 ```
 
-If you meet issues when running or compiling mmcv, we list some common issues in [Frequently Asked Question](../faq.html).
+If you meet issues when running or compiling mmcv, we list some common issues in [Frequently Asked Question](https://mmcv.readthedocs.io/en/latest/faq.html).
